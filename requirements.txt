@@ -21,7 +21,7 @@ Tornado==6.2
 # security plugin
 PyCryptodome==3.16.0
 # xbrlDB plugin
-pg8000==1.29.3
+pg8000==1.29.4
 cx_Oracle==8.3.0
 PyMySQL==1.0.2
 pyodbc==4.0.35
