@@ -20,3 +20,9 @@ updates:
   - Workiva/xt
   registries:
   - python-index-workivaeast-jfrog-io-workivaeast-api-pypi-pypi-prod
+  ignore:
+  - dependency-name: "RDFLib"
+    versions:
+    - ">=6"
+  - dependency-name: "cx_Freeze"
+  - dependency-name: "packaging"

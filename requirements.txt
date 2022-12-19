@@ -12,17 +12,17 @@ Cheroot==9.0.0
 pycountry==22.3.5
 # plugins
 # EdgarRenderer plugin
-NumPy==1.21.6; python_version < "3.8"
-NumPy==1.23.4; python_version >= "3.8"
-Matplotlib==3.5.3; python_version < "3.8"
-Matplotlib==3.6.1; python_version >= "3.8"
+NumPy==1.21.6 ; python_version < "3.8"
+NumPy==1.23.4 ; python_version >= "3.8"
+Matplotlib==3.5.3 ; python_version < "3.8"
+Matplotlib==3.6.1 ; python_version >= "3.8"
 holidays==0.17.2
 Tornado==6.2
 # security plugin
 PyCryptodome==3.16.0
 # xbrlDB plugin
-pg8000==1.29.4
 cx_Oracle==8.3.0
+pg8000==1.29.4
 PyMySQL==1.0.2
 pyodbc==4.0.35
 RDFLib==5.0.0
