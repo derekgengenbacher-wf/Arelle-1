@@ -8,7 +8,8 @@ to domestic copyright protection. 17 U.S.C. 105.
 Implementation of DQC rules invokes https://xbrl.us/dqc-license and https://xbrl.us/dqc-patent
 
 '''
-import re, datetime, decimal, json, unicodedata, holidays, fnmatch
+import datetime, decimal, json, unicodedata, holidays, fnmatch
+import regex as re
 from math import isnan, pow
 from collections import defaultdict, OrderedDict
 from pytz import timezone
@@ -2411,8 +2412,14 @@ def validateFiling(val, modelXbrl, isEFM=False, isGFM=False):
                             usedCalcPairingsOfConcept = usedCalcsPresented[conceptPresented]
                             if len(usedCalcPairingsOfConcept & conceptsPresented) > 0:
                                 usedCalcPairingsOfConcept -= conceptsPresented
+                    _validateEFMCalcTree = (
+                        # If `efmFiling` is undefined (GUI and potentially the Python library) calc tree walk should be performed.
+                        not hasattr(modelXbrl.modelManager, 'efmFiling')
+                        # `validateEFMCalcTree` can be set to False from the CLI (`--efm-skip-calc-tree`).
+                        or getattr(modelXbrl.modelManager.efmFiling.options, 'validateEFMCalcTree', True)
+                    )
                     # 6.15.02, 6.15.03 semantics checks for totals and calc arcs (by tree walk)
-                    if validateLoggingSemantic:
+                    if validateLoggingSemantic and _validateEFMCalcTree:
                         for rootConcept in parentChildRels.rootConcepts:
                             checkCalcsTreeWalk(val, parentChildRels, rootConcept, isStatementSheet, False, conceptsUsed, set())
                     # 6.12.6

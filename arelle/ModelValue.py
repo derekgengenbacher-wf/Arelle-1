@@ -4,7 +4,6 @@ See COPYRIGHT.md for copyright information.
 from __future__ import annotations
 import datetime, isodate
 from decimal import Decimal
-from functools import total_ordering
 from typing import TYPE_CHECKING, Any, cast, overload, Optional, Union
 from fractions import Fraction
 
@@ -30,11 +29,14 @@ def qname(value: ModelObject | str | QName, name: str | ModelObject) -> QName: .
 def qname(value: ModelObject | str | QName, name: str | ModelObject | None = None, noPrefixIsNoNamespace: bool = False) -> QName: ...
 
 @overload
+def qname(value: ModelObject, name: QName, noPrefixIsNoNamespace: bool) -> QName: ...
+
+@overload
 def qname(value: ModelObject | str | QName | Any | None, name: str | ModelObject | dict[str, str] | None) -> QName | None : ...
 
 def qname(
     value: ModelObject | str | QName | Any | None,
-    name: str | ModelObject | dict[str, str] | None = None,
+    name: str | QName | ModelObject | dict[str, str] | None = None,
     noPrefixIsNoNamespace: bool = False,
     castException: Exception | None = None,
     prefixException: Exception | None = None,
@@ -92,6 +94,7 @@ def qname(
         else:
             namespaceURI = None
             namespaceDict = None
+        assert isinstance(value, str)
         prefix,sep,localName = value.strip().partition(":")  # must be whitespace collapsed
         if not sep:
             localName = prefix
@@ -119,7 +122,7 @@ def qnameHref(href: str) -> QName: # namespaceUri#localname
     return QName(None, namespaceURI or None, localName)
 
 
-def qnameNsLocalName(namespaceURI: str, localName: str) -> QName:  # does not handle localNames with prefix
+def qnameNsLocalName(namespaceURI: str | None, localName: str) -> QName:  # does not handle localNames with prefix
     return QName(None, namespaceURI or None, localName)
 
 
@@ -165,11 +168,15 @@ def qnameEltPfxName(
     return QName(prefix, namespaceURI, localName)
 
 
-def _default_to_empty(string: str | None) -> str:
-    return string or ''
+def _conformsQname(possibleQname: Any) -> bool:
+    return (hasattr(possibleQname, 'namespaceURI') and
+            hasattr(possibleQname, 'localName'))
 
 
-@total_ordering
+def _qnameCompareValue(namespaceURI: str | None, localName: str | None) -> tuple[str, str]:
+    return namespaceURI or '', localName or ''
+
+
 class QName:
 
     __slots__ = ("prefix", "namespaceURI", "localName", "qnameValueHash")
@@ -182,10 +189,6 @@ class QName:
 
     def __hash__(self) -> int:
         return self.qnameValueHash
-
-    @staticmethod
-    def _conforms(other: Any) -> bool:
-        return isinstance(other, QName) or (hasattr(other, 'namespaceURI') and hasattr(other, 'localName'))
 
     @property
     def clarkNotation(self) -> str:
@@ -208,13 +211,33 @@ class QName:
             return self.localName
 
     def __eq__(self, other: Any) -> bool:
-        if QName._conforms(other):
-            return bool(self.localName == other.localName and self.namespaceURI == other.namespaceURI)
-        return False
+        # This method previously used a try except and returned False on AttributeErrors. While this was efficient for
+        # QName == QName, it had significant overhead for QName == int, which is common during validations (can occur
+        # 100,000+ times). This will be revisited once the mixed type dicts in the validation impl are no more.
+        # Additionally `QName == otherValue` historically returns False if the other value doesn't have matching attrs.
+        # This is bad practice, but returning NotImplemented breaks conformance suites. Requires further investigation.
+        return (_conformsQname(other) and
+                self.localName == other.localName and
+                self.namespaceURI == other.namespaceURI)
 
     def __lt__(self, other: Any) -> bool:
-        if QName._conforms(other):
-            return (_default_to_empty(self.namespaceURI), _default_to_empty(self.localName)) < (_default_to_empty(other.namespaceURI), _default_to_empty(other.localName))
+        if _conformsQname(other):
+            return _qnameCompareValue(self.namespaceURI, self.localName) < _qnameCompareValue(other.namespaceURI, other.localName)
+        return NotImplemented
+
+    def __le__(self, other: Any) -> bool:
+        if _conformsQname(other):
+            return _qnameCompareValue(self.namespaceURI, self.localName) <= _qnameCompareValue(other.namespaceURI, other.localName)
+        return NotImplemented
+
+    def __gt__(self, other: Any) -> bool:
+        if _conformsQname(other):
+            return _qnameCompareValue(self.namespaceURI, self.localName) > _qnameCompareValue(other.namespaceURI, other.localName)
+        return NotImplemented
+
+    def __ge__(self, other: Any) -> bool:
+        if _conformsQname(other):
+            return _qnameCompareValue(self.namespaceURI, self.localName) >= _qnameCompareValue(other.namespaceURI, other.localName)
         return NotImplemented
 
     def __bool__(self) -> bool:
