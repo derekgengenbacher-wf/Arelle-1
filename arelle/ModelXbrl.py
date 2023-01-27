@@ -3,10 +3,11 @@ See COPYRIGHT.md for copyright information.
 '''
 from __future__ import annotations
 
-import os, sys, re, traceback, uuid
+import os, sys, traceback, uuid
+import regex as re
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any, cast, Optional
+from typing import TYPE_CHECKING, Any, Type, TypeVar, cast, Optional
 import logging
 from decimal import Decimal
 from arelle import UrlUtil, XmlUtil, ModelValue, XbrlConst, XmlValidate
@@ -31,11 +32,12 @@ if TYPE_CHECKING:
     from arelle.ModelRelationshipSet import ModelRelationshipSet as ModelRelationshipSetClass
     from arelle.ModelValue import QName
     from arelle.PrototypeDtsObject import LinkPrototype
-    from arelle.typing import TypeGetText, LocaleDict
+    from arelle.typing import EmptyTuple, TypeGetText, LocaleDict
 
     _: TypeGetText  # Handle gettext
 else:
     ModelFact = None
+    ModelContext = None
 
 
 profileStatNumber = 0
@@ -44,7 +46,7 @@ AUTO_LOCATE_ELEMENT = '771407c0-1d0c-11e1-be5e-028037ec0200' # singleton meaning
 DEFAULT = sys.intern("default")
 NONDEFAULT = sys.intern("non-default")
 DEFAULTorNONDEFAULT = sys.intern("default-or-non-default")
-EMPTY_TUPLE = ()
+EMPTY_TUPLE: EmptyTuple = ()
 
 
 def load(modelManager: ModelManager, url: str, nextaction: str | None = None, base: str | None = None, useFileSource: FileSourceClass | None = None, errorCaptureLevel: str | None = None, **kwargs: str) -> ModelXbrl:
@@ -129,6 +131,9 @@ def loadSchemalocatedSchemas(modelXbrl: ModelXbrl) -> None:
             for modelDocument in modelDocuments:
                 modelDocument.loadSchemalocatedSchemas()
             modelDocumentsSchemaLocated |= modelDocuments
+
+
+MatchSubstitutionGroupValueType = TypeVar('MatchSubstitutionGroupValueType', Type[ModelObject], bool)
 
 
 class ModelXbrl:
@@ -300,7 +305,7 @@ class ModelXbrl:
 
     def __init__(self,  modelManager: ModelManager, errorCaptureLevel: str | None = None) -> None:
         self.modelManager = modelManager
-        self.skipDTS = modelManager.skipDTS
+        self.skipDTS: bool = modelManager.skipDTS
         self.init(errorCaptureLevel=errorCaptureLevel)
 
     def init(self, keepViews: bool = False, errorCaptureLevel: str | None = None) -> None:
@@ -449,7 +454,7 @@ class ModelXbrl:
                 return cast(str, _roleTypeName)
         return self.roleTypeDefinition(roleURI, lang)
 
-    def matchSubstitutionGroup(self, elementQname: QName, subsGrpMatchTable: dict[QName | None, bool | ModelObject]) -> bool | ModelObject | None:
+    def matchSubstitutionGroup(self, elementQname: QName, subsGrpMatchTable: dict[QName | None, MatchSubstitutionGroupValueType]) -> MatchSubstitutionGroupValueType | None:
         """Resolve a subsitutionGroup for the elementQname from the match table
 
         Used by ModelObjectFactory to return Class type for new ModelObject subclass creation, and isInSubstitutionGroup
@@ -614,8 +619,8 @@ class ModelXbrl:
         if cast(str, afterSibling) == AUTO_LOCATE_ELEMENT:
             afterSibling = XmlUtil.lastChild(xbrlElt, XbrlConst.xbrli, ("schemaLocation", "roleType", "arcroleType", "context"))
         cntxId = id if id else 'c-{0:02}'.format( len(self.contexts) + 1)
-        newCntxElt = XmlUtil.addChild(xbrlElt, XbrlConst.xbrli, "context", attributes=("id", cntxId),
-                                      afterSibling=cast(Optional[ModelObject], afterSibling), beforeSibling=beforeSibling)
+        newCntxElt = cast(ModelContext, XmlUtil.addChild(xbrlElt, XbrlConst.xbrli, "context", attributes=("id", cntxId),
+                                      afterSibling=cast(Optional[ModelObject], afterSibling), beforeSibling=beforeSibling))
         entityElt = XmlUtil.addChild(newCntxElt, XbrlConst.xbrli, "entity")
         XmlUtil.addChild(entityElt, XbrlConst.xbrli, "identifier",
                             attributes=("scheme", entityIdentScheme),
@@ -695,6 +700,9 @@ class ModelXbrl:
 
         XmlValidate.validate(self, newCntxElt)
         self.modelDocument.contextDiscover(newCntxElt)
+        if hasattr(self, "_dimensionsInUse"):
+            for dim in newCntxElt.qnameDims.values():
+                self._dimensionsInUse.add(dim.dimension)
         return newCntxElt
 
     def matchUnit(self, multiplyBy: list[QName], divideBy: list[QName]) -> ModelUnit | None:
