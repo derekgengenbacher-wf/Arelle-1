@@ -18,7 +18,8 @@ from arelle.utils.PluginHooks import ValidationHook
 from arelle.utils.validate.Decorator import validation
 from arelle.utils.validate.Validation import Validation
 from ..DisclosureSystems import DISCLOSURE_SYSTEM_NL_INLINE_2024
-from ..PluginValidationDataExtension import PluginValidationDataExtension, XBRLI_IDENTIFIER_PATTERN, XBRLI_IDENTIFIER_SCHEMA, DISALLOWED_IXT_NAMESPACES
+from ..PluginValidationDataExtension import (PluginValidationDataExtension, XBRLI_IDENTIFIER_PATTERN,
+                                             XBRLI_IDENTIFIER_SCHEMA, DISALLOWED_IXT_NAMESPACES, ALLOWABLE_LANGUAGES)
 
 if TYPE_CHECKING:
     from arelle.ModelXbrl import ModelXbrl
@@ -488,5 +489,37 @@ def rule_nl_kvk_3_5_2_2 (
         yield Validation.error(
             codes='NL.NL-KVK.3.5.2.2.taggedTextFactOnlyInLanguagesOtherThanLanguageOfAReport',
             msg=_('Tagged text facts MUST be provided in the language of the report.'),
+            modelObject=factsWithWrongLang
+        )
+
+
+@validation(
+    hook=ValidationHook.XBRL_FINALLY,
+    disclosureSystems=[
+        DISCLOSURE_SYSTEM_NL_INLINE_2024
+    ],
+)
+def rule_nl_kvk_3_5_2_3 (
+        pluginData: PluginValidationDataExtension,
+        val: ValidateXbrl,
+        *args: Any,
+        **kwargs: Any,
+) -> Iterable[Validation]:
+    """
+    NL-KVK.3.5.2.3: The value of the @xml:lang attribute SHOULD be 'nl' or 'en' or 'de' or 'fr'.
+    """
+    factsWithWrongLang = set()
+    for fact in val.modelXbrl.facts:
+        if (fact is not None and
+                fact.concept is not None and
+                fact.concept.type is not None and
+                fact.concept.type.isOimTextFactType and
+                fact.xmlLang is not None and
+                fact.xmlLang not in ALLOWABLE_LANGUAGES):
+            factsWithWrongLang.add(fact)
+    if len(factsWithWrongLang) > 0:
+        yield Validation.warning(
+            codes='NL.NL-KVK.3.5.2.3.invalidLanguageAttribute',
+            msg=_('The lang attribute for the following fact(s) should be one of the following: \'nl\' or \'en\' or \'de\' or \'fr\''),
             modelObject=factsWithWrongLang
         )

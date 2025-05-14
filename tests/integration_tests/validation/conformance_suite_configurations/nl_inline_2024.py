@@ -24,6 +24,9 @@ config = ConformanceSuiteConfig(
         'G3-5-2_1/index.xml:TC3_invalid': {
             'taggedTextFactOnlyInLanguagesOtherThanLanguageOfAReport': 1,
         },
+        'G3-5-2_3/index.xml:TC2_invalid': {
+            'invalidLanguageAttribute': 1
+        },
         'G4-1-2_1/index.xml:TC2_valid': {
             'undefinedLanguageForTextFact': 1,
             'taggedTextFactOnlyInLanguagesOtherThanLanguageOfAReport': 1,
