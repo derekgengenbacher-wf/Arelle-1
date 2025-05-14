@@ -14,7 +14,7 @@ from arelle.FunctionIxt import ixtNamespaces
 from arelle.ModelInstanceObject import ModelUnit, ModelContext, ModelFact, ModelInlineFootnote
 from arelle.ModelValue import QName
 from arelle.ModelXbrl import ModelXbrl
-from arelle.plugin.validate.Util import etreeIterWithDepth
+from arelle.ValidationUtil import etreeIterWithDepth
 from arelle.utils.PluginData import PluginData
 from arelle.XmlValidate import lexicalPatterns
 
@@ -40,7 +40,7 @@ class ContextData:
 class FootnoteData:
     noMatchLangFootnotes: set[ModelInlineFootnote]
     orphanedFootnotes: set[ModelInlineFootnote]
-    factLangFootnotes: defaultdict[ModelInlineFootnote, set]
+    factLangFootnotes: defaultdict[ModelInlineFootnote, set[str]]
 
 @dataclass
 class PluginValidationDataExtension(PluginData):
@@ -164,7 +164,7 @@ class PluginValidationDataExtension(PluginData):
     def getOrphanedFootnotes(self, modelXbrl: ModelXbrl) -> set[ModelInlineFootnote]:
         return self.checkFootnotes(modelXbrl).orphanedFootnotes
 
-    def getFactLangFootnotes(self, modelXbrl: ModelXbrl) -> defaultdict[ModelInlineFootnote, set]:
+    def getFactLangFootnotes(self, modelXbrl: ModelXbrl) -> defaultdict[ModelInlineFootnote, set[str]]:
         return self.checkFootnotes(modelXbrl).factLangFootnotes
 
     @lru_cache(1)
@@ -177,6 +177,7 @@ class PluginValidationDataExtension(PluginData):
                 reportXmlLang = elt.get("{http://www.w3.org/XML/1998/namespace}lang")
                 if reportXmlLang:
                     return reportXmlLang
+        return 'None'
 
     @lru_cache(1)
     def unitsByDocument(self, modelXbrl: ModelXbrl) -> dict[str, list[ModelUnit]]:
