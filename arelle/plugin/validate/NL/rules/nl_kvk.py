@@ -9,7 +9,7 @@ from arelle.ModelInstanceObject import ModelInlineFact
 from arelle.ValidateDuplicateFacts import getDuplicateFactSets
 from arelle.XmlValidateConst import VALID
 from collections.abc import Iterable
-from typing import Any, TYPE_CHECKING
+from typing import Any, cast, TYPE_CHECKING
 
 from arelle import XmlUtil
 from arelle.ValidateXbrl import ValidateXbrl
@@ -17,6 +17,7 @@ from arelle.typing import TypeGetText
 from arelle.utils.PluginHooks import ValidationHook
 from arelle.utils.validate.Decorator import validation
 from arelle.utils.validate.Validation import Validation
+from arelle.utils.validate.ValidationUtil import etreeIterWithDepth
 from ..DisclosureSystems import DISCLOSURE_SYSTEM_NL_INLINE_2024
 from ..PluginValidationDataExtension import (PluginValidationDataExtension, XBRLI_IDENTIFIER_PATTERN,
                                              XBRLI_IDENTIFIER_SCHEMA, DISALLOWED_IXT_NAMESPACES, ALLOWABLE_LANGUAGES)
@@ -508,18 +509,16 @@ def rule_nl_kvk_3_5_2_3 (
     """
     NL-KVK.3.5.2.3: The value of the @xml:lang attribute SHOULD be 'nl' or 'en' or 'de' or 'fr'.
     """
-    factsWithWrongLang = set()
-    for fact in val.modelXbrl.facts:
-        if (fact is not None and
-                fact.concept is not None and
-                fact.concept.type is not None and
-                fact.concept.type.isOimTextFactType and
-                fact.xmlLang is not None and
-                fact.xmlLang not in ALLOWABLE_LANGUAGES):
-            factsWithWrongLang.add(fact)
-    if len(factsWithWrongLang) > 0:
+    badLangsUsed = set()
+    for ixdsHtmlRootElt in val.modelXbrl.ixdsHtmlElements:
+        for uncast_elt, depth in etreeIterWithDepth(ixdsHtmlRootElt):
+            elt = cast(Any, uncast_elt)
+            xmlLang = elt.get("{http://www.w3.org/XML/1998/namespace}lang")
+            if xmlLang and xmlLang not in ALLOWABLE_LANGUAGES:
+                badLangsUsed.add(xmlLang)
+    if len(badLangsUsed) > 0:
         yield Validation.warning(
             codes='NL.NL-KVK.3.5.2.3.invalidLanguageAttribute',
-            msg=_('The lang attribute for the following fact(s) should be one of the following: \'nl\' or \'en\' or \'de\' or \'fr\''),
-            modelObject=factsWithWrongLang
+            msg=_('The lang attribute should use one of the following: \'nl\' or \'en\' or \'de\' or \'fr\'. '
+                  'The following languages are used incorrectly: {}'.format(badLangsUsed)),
         )
