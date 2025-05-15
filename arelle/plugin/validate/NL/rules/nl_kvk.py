@@ -468,7 +468,7 @@ def rule_nl_kvk_3_5_2_1 (
         DISCLOSURE_SYSTEM_NL_INLINE_2024
     ],
 )
-def rule_nl_kvk_3_5_2_2 (
+def rule_nl_kvk_3_5_2_2(
         pluginData: PluginValidationDataExtension,
         val: ValidateXbrl,
         *args: Any,
@@ -522,3 +522,4 @@ def rule_nl_kvk_3_5_2_3 (
             msg=_('The lang attribute should use one of the following: \'nl\' or \'en\' or \'de\' or \'fr\'. '
                   'The following languages are used incorrectly: {}'.format(badLangsUsed)),
         )
+
